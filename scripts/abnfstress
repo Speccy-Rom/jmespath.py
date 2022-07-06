@@ -135,7 +135,7 @@ def stress(args):
                 import pdb; pdb.set_trace()
             i += 1
             if i % 1000 == 0:
-                print("num_expressions: %s" % i)
+                print(f"num_expressions: {i}")
 
 
 def main():

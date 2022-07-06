@@ -14,9 +14,7 @@ class TestRegexLexer(unittest.TestCase):
         # type and value.  The line/column numbers are not
         # checked, and we use assertEqual for the tests
         # that check those line numbers.
-        stripped = []
-        for item in actual:
-            stripped.append({'type': item['type'], 'value': item['value']})
+        stripped = [{'type': item['type'], 'value': item['value']} for item in actual]
         # Every tokenization should end in eof, so we automatically
         # check that value, strip it off the end, and then
         # verify the remaining tokens against the expected.

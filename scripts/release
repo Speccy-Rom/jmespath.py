@@ -39,18 +39,20 @@ def must_be_on_develop_branch():
     assert output == 'develop', 'Must be on the develop branch, not %r' % output
 
 def no_outstanding_changes():
-    output = check_output(
-        'git status --short', shell=True).strip().decode('utf8')
-    if output:
+    if (
+        output := check_output('git status --short', shell=True)
+        .strip()
+        .decode('utf8')
+    ):
         raise AssertionError("Can't have any pending changes:\n%s" % output)
 
 
 def create_release_branch(version):
-    check_call('git checkout -b release-%s' % version, shell=True)
+    check_call(f'git checkout -b release-{version}', shell=True)
 
 
 def bump_version(version):
-    check_call('scripts/bumpversion %s' % version, shell=True)
+    check_call(f'scripts/bumpversion {version}', shell=True)
 
 
 # It might be nice to auto populate the merge/tag messages,
@@ -58,7 +60,7 @@ def bump_version(version):
 
 def merge_to_master(version):
     run('git checkout master')
-    run('git merge --no-ff release-%s' % version)
+    run(f'git merge --no-ff release-{version}')
 
 
 def tag_release(version):
@@ -67,7 +69,7 @@ def tag_release(version):
 
 def merge_to_develop(version):
     run('git checkout develop')
-    run('git merge --no-ff release-%s' % version)
+    run(f'git merge --no-ff release-{version}')
 
 
 def push_changes():

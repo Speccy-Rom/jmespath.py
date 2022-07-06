@@ -6,10 +6,7 @@ from numbers import Number
 
 
 def _equals(x, y):
-    if _is_special_number_case(x, y):
-        return False
-    else:
-        return x == y
+    return False if _is_special_number_case(x, y) else x == y
 
 
 def _is_special_number_case(x, y):
@@ -51,9 +48,7 @@ def _is_actual_number(x):
     # True
     # >>> isinstance(True, int)
     # True
-    if isinstance(x, bool):
-        return False
-    return isinstance(x, Number)
+    return False if isinstance(x, bool) else isinstance(x, Number)
 
 
 class Options(object):
@@ -88,8 +83,7 @@ class Visitor(object):
         node_type = node['type']
         method = self._method_cache.get(node_type)
         if method is None:
-            method = getattr(
-                self, 'visit_%s' % node['type'], self.default_visit)
+            method = getattr(self, f"visit_{node['type']}", self.default_visit)
             self._method_cache[node_type] = method
         return method(node, *args, **kwargs)
 
@@ -145,17 +139,15 @@ class TreeInterpreter(Visitor):
                 self.visit(node['children'][0], value),
                 self.visit(node['children'][1], value)
             )
-        else:
-            # Ordering operators are only valid for numbers.
-            # Evaluating any other type with a comparison operator
-            # will yield a None value.
-            left = self.visit(node['children'][0], value)
-            right = self.visit(node['children'][1], value)
-            num_types = (int, float)
-            if not (_is_comparable(left) and
-                    _is_comparable(right)):
-                return None
-            return comparator_func(left, right)
+        # Ordering operators are only valid for numbers.
+        # Evaluating any other type with a comparison operator
+        # will yield a None value.
+        left = self.visit(node['children'][0], value)
+        right = self.visit(node['children'][1], value)
+        num_types = (int, float)
+        if not _is_comparable(left) or not _is_comparable(right):
+            return None
+        return comparator_func(left, right)
 
     def visit_current(self, node, value):
         return value
@@ -238,10 +230,7 @@ class TreeInterpreter(Visitor):
     def visit_multi_select_list(self, node, value):
         if value is None:
             return None
-        collected = []
-        for child in node['children']:
-            collected.append(self.visit(child, value))
-        return collected
+        return [self.visit(child, value) for child in node['children']]
 
     def visit_or_expression(self, node, value):
         matched = self.visit(node['children'][0], value)
@@ -312,7 +301,7 @@ class GraphvizVisitor(Visitor):
 
     def visit(self, node, *args, **kwargs):
         self._lines.append('digraph AST {')
-        current = '%s%s' % (node['type'], self._count)
+        current = f"{node['type']}{self._count}"
         self._count += 1
         self._visit(node, current)
         self._lines.append('}')
@@ -322,7 +311,7 @@ class GraphvizVisitor(Visitor):
         self._lines.append('%s [label="%s(%s)"]' % (
             current, node['type'], node.get('value', '')))
         for child in node.get('children', []):
-            child_name = '%s%s' % (child['type'], self._count)
+            child_name = f"{child['type']}{self._count}"
             self._count += 1
-            self._lines.append('  %s -> %s' % (current, child_name))
+            self._lines.append(f'  {current} -> {child_name}')
             self._visit(child, child_name)

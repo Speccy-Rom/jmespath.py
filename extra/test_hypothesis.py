@@ -52,7 +52,7 @@ def test_lexer_api(expr):
             )
         return
     except Exception as e:
-        raise AssertionError("Non JMESPathError raised: %s" % e)
+        raise AssertionError(f"Non JMESPathError raised: {e}")
     assert isinstance(tokens, list)
     # Token starting positions must be unique, can't have two
     # tokens with the same start position.
@@ -82,7 +82,7 @@ def test_parser_api_from_str(expr):
     except exceptions.JMESPathError as e:
         return
     except Exception as e:
-        raise AssertionError("Non JMESPathError raised: %s" % e)
+        raise AssertionError(f"Non JMESPathError raised: {e}")
     assert isinstance(ast.parsed, dict)
     assert 'type' in ast.parsed
     assert 'children' in ast.parsed
@@ -103,7 +103,7 @@ def test_search_api(expr, data):
     except exceptions.JMESPathError as e:
         return
     except Exception as e:
-        raise AssertionError("Non JMESPathError raised: %s" % e)
+        raise AssertionError(f"Non JMESPathError raised: {e}")
 
 
 # Additional property tests for functions.

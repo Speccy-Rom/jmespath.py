@@ -92,21 +92,18 @@ class Lexer(object):
                         'start': self._position - 1, 'end': self._position}
                     self._next()
                 else:
-                    if self._current is None:
-                        # If we're at the EOF, we never advanced
-                        # the position so we don't need to rewind
-                        # it back one location.
-                        position = self._position
-                    else:
-                        position = self._position - 1
+                    position = self._position if self._current is None else self._position - 1
                     raise LexerError(
                         lexer_position=position,
                         lexer_value='=',
                         message="Unknown token '='")
             else:
-                raise LexerError(lexer_position=self._position,
-                                 lexer_value=self._current,
-                                 message="Unknown token %s" % self._current)
+                raise LexerError(
+                    lexer_position=self._position,
+                    lexer_value=self._current,
+                    message=f"Unknown token {self._current}",
+                )
+
         yield {'type': 'eof', 'value': '',
                'start': self._length, 'end': self._length}
 
@@ -146,9 +143,12 @@ class Lexer(object):
                 self._next()
             if self._current is None:
                 # We're at the EOF.
-                raise LexerError(lexer_position=start,
-                                 lexer_value=self._expression[start:],
-                                 message="Unclosed %s delimiter" % delimiter)
+                raise LexerError(
+                    lexer_position=start,
+                    lexer_value=self._expression[start:],
+                    message=f"Unclosed {delimiter} delimiter",
+                )
+
             buff += self._current
             self._next()
         # Skip the closing delimiter.
@@ -169,9 +169,12 @@ class Lexer(object):
                 warnings.warn("deprecated string literal syntax",
                               PendingDeprecationWarning)
             except ValueError:
-                raise LexerError(lexer_position=start,
-                                 lexer_value=self._expression[start:],
-                                 message="Bad token %s" % lexeme)
+                raise LexerError(
+                    lexer_position=start,
+                    lexer_value=self._expression[start:],
+                    message=f"Bad token {lexeme}",
+                )
+
         token_len = self._position - start
         return {'type': 'literal', 'value': parsed_json,
                 'start': start, 'end': token_len}

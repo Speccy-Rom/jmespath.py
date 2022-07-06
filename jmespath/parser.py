@@ -109,22 +109,28 @@ class Parser(object):
         self._tokens = list(self.tokenizer)
         self._index = 0
         parsed = self._expression(binding_power=0)
-        if not self._current_token() == 'eof':
+        if self._current_token() != 'eof':
             t = self._lookahead_token(0)
-            raise exceptions.ParseError(t['start'], t['value'], t['type'],
-                                        "Unexpected token: %s" % t['value'])
+            raise exceptions.ParseError(
+                t['start'],
+                t['value'],
+                t['type'],
+                f"Unexpected token: {t['value']}",
+            )
+
         return ParsedResult(expression, parsed)
 
     def _expression(self, binding_power=0):
         left_token = self._lookahead_token(0)
         self._advance()
         nud_function = getattr(
-            self, '_token_nud_%s' % left_token['type'],
-            self._error_nud_token)
+            self, f"_token_nud_{left_token['type']}", self._error_nud_token
+        )
+
         left = nud_function(left_token)
         current_token = self._current_token()
         while binding_power < self.BINDING_POWER[current_token]:
-            led = getattr(self, '_token_led_%s' % current_token, None)
+            led = getattr(self, f'_token_led_{current_token}', None)
             if led is None:
                 error_token = self._lookahead_token(0)
                 self._error_led_token(error_token)
@@ -198,19 +204,14 @@ class Parser(object):
             return self._parse_multi_select_list()
 
     def _parse_index_expression(self):
-        # We're here:
-        # [<current>
-        #  ^
-        #  | current token
         if (self._lookahead(0) == 'colon' or
                 self._lookahead(1) == 'colon'):
             return self._parse_slice_expression()
-        else:
-            # Parse the syntax [number]
-            node = ast.index(self._lookahead_token(0)['value'])
-            self._advance()
-            self._match('rbracket')
-            return node
+        # Parse the syntax [number]
+        node = ast.index(self._lookahead_token(0)['value'])
+        self._advance()
+        self._match('rbracket')
+        return node
 
     def _parse_slice_expression(self):
         # [start:end:step]
@@ -219,7 +220,7 @@ class Parser(object):
         parts = [None, None, None]
         index = 0
         current_token = self._current_token()
-        while not current_token == 'rbracket' and index < 3:
+        while current_token != 'rbracket' and index < 3:
             if current_token == 'colon':
                 index += 1
                 if index == 3:
@@ -244,13 +245,12 @@ class Parser(object):
         return ast.expref(expression)
 
     def _token_led_dot(self, left):
-        if not self._current_token() == 'star':
+        if self._current_token() != 'star':
             right = self._parse_dot_rhs(self.BINDING_POWER['dot'])
-            if left['type'] == 'subexpression':
-                left['children'].append(right)
-                return left
-            else:
+            if left['type'] != 'subexpression':
                 return ast.subexpression([left, right])
+            left['children'].append(right)
+            return left
         else:
             # We're creating a projection.
             self._advance()
@@ -281,14 +281,13 @@ class Parser(object):
                 "Invalid function name '%s'" % prev_t['value'])
         name = left['value']
         args = []
-        while not self._current_token() == 'rparen':
+        while self._current_token() != 'rparen':
             expression = self._expression()
             if self._current_token() == 'comma':
                 self._match('comma')
             args.append(expression)
         self._match('rparen')
-        function_node = ast.function_expression(name, args)
-        return function_node
+        return ast.function_expression(name, args)
 
     def _token_led_filter(self, left):
         # Filters are projections.
@@ -328,14 +327,13 @@ class Parser(object):
         token = self._lookahead_token(0)
         if token['type'] in ['number', 'colon']:
             right = self._parse_index_expression()
-            if left['type'] == 'index_expression':
-                # Optimization: if the left node is an index expr,
-                # we can avoid creating another node and instead just add
-                # the right node as a child of the left.
-                left['children'].append(right)
-                return left
-            else:
+            if left['type'] != 'index_expression':
                 return self._project_if_slice(left, right)
+            # Optimization: if the left node is an index expr,
+            # we can avoid creating another node and instead just add
+            # the right node as a child of the left.
+            left['children'].append(right)
+            return left
         else:
             # We have a projection
             self._match('star')
@@ -428,9 +426,7 @@ class Parser(object):
             t = self._lookahead_token(0)
             allowed = ['quoted_identifier', 'unquoted_identifier',
                        'lbracket', 'lbrace']
-            msg = (
-                "Expecting: %s, got: %s" % (allowed, t['type'])
-            )
+            msg = f"Expecting: {allowed}, got: {t['type']}"
             self._raise_parse_error_for_token(t, msg)
 
     def _error_nud_token(self, token):
@@ -483,8 +479,7 @@ class Parser(object):
         if actual_type == 'eof':
             raise exceptions.IncompleteExpressionError(
                 lex_position, actual_value, actual_type)
-        message = 'Expecting: %s, got: %s' % (expected_type,
-                                              actual_type)
+        message = f'Expecting: {expected_type}, got: {actual_type}'
         raise exceptions.ParseError(
             lex_position, actual_value, actual_type, message)
 
@@ -506,8 +501,7 @@ class ParsedResult(object):
 
     def search(self, value, options=None):
         interpreter = visitor.TreeInterpreter(options)
-        result = interpreter.visit(self.parsed, value)
-        return result
+        return interpreter.visit(self.parsed, value)
 
     def _render_dot_file(self):
         """Render the parsed AST as a dot file.
@@ -520,8 +514,7 @@ class ParsedResult(object):
 
         """
         renderer = visitor.GraphvizVisitor()
-        contents = renderer.visit(self.parsed)
-        return contents
+        return renderer.visit(self.parsed)
 
     def __repr__(self):
         return repr(self.parsed)

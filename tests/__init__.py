@@ -16,13 +16,11 @@ def as_s_expression(node):
 
 
 def _as_s_expression(node, parts):
-    parts.append("(%s" % (node.__class__.__name__.lower()))
-    if isinstance(node, ast.Field):
-        parts.append(" %s" % node.name)
-    elif isinstance(node, ast.FunctionExpression):
-        parts.append(" %s" % node.name)
+    parts.append(f"({node.__class__.__name__.lower()}")
+    if isinstance(node, (ast.Field, ast.FunctionExpression)):
+        parts.append(f" {node.name}")
     elif isinstance(node, ast.KeyValPair):
-        parts.append(" %s" % node.key_name)
+        parts.append(f" {node.key_name}")
     for child in node.children:
         parts.append(" ")
         _as_s_expression(child, parts)

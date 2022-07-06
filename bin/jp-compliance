@@ -84,21 +84,17 @@ class ComplianceTestRunner(object):
                 self._run_test(test_case)
 
     def _should_run(self, test_case):
-        if not self.tests:
-            return True
-        # Specific tests were called out so we need
-        # at least one thing in self.tests to match
-        # in order to run the test.
-        for allowed_test in self.tests:
-            if self._is_subset(allowed_test, test_case):
-                return True
-        return False
+        return (
+            any(
+                self._is_subset(allowed_test, test_case)
+                for allowed_test in self.tests
+            )
+            if self.tests
+            else True
+        )
 
     def _is_subset(self, subset, fullset):
-        for key in subset:
-            if subset[key] != fullset.get(key):
-                return False
-        return True
+        return all(subset[key] == fullset.get(key) for key in subset)
 
     def _load_test_file(self, test_json_file):
         with open(test_json_file) as f:
@@ -111,16 +107,14 @@ class ComplianceTestRunner(object):
             current = {"given": given, "group_number": group_number,
                        "test_number": i,
                        'category': _splitext(_bname(filename))[0]}
-            current.update(case)
+            current |= case
             yield current
 
     def _test_cases(self):
         for test_json_file in self.get_compliance_test_files():
             test_groups = self._load_test_file(test_json_file)
             for i, test_group in enumerate(test_groups):
-                test_cases = self._load_test_cases(test_json_file, i, test_group)
-                for test_case in test_cases:
-                    yield test_case
+                yield from self._load_test_cases(test_json_file, i, test_group)
 
     def _run_test(self, test_case):
         command = shlex.split(self.jp_executable)
@@ -134,7 +128,7 @@ class ComplianceTestRunner(object):
         if 'result' in test_case:
             actual = json.loads(stdout)
             expected = test_case['result']
-            if not actual == expected:
+            if actual != expected:
                 self._show_failure(actual, test_case)
             else:
                 sys.stdout.write('.')
@@ -173,8 +167,7 @@ class ComplianceTestRunner(object):
         for root, dirnames, filenames in os.walk(self.test_dir):
             for filename in filenames:
                 if filename.endswith('.json'):
-                    full_path = _pjoin(root, filename)
-                    yield full_path
+                    yield _pjoin(root, filename)
 
 
 def display_available_tests(test_files):
@@ -187,7 +180,7 @@ def display_available_tests(test_files):
 def test_spec(value):
     parts = value.split(',')
     if not parts:
-        raise ValueError("%s should be a comma separated list." % value)
+        raise ValueError(f"{value} should be a comma separated list.")
     spec = {'category': parts[0]}
     if len(parts) == 2:
         spec['group_number'] = int(parts[1])

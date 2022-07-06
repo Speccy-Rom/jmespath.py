@@ -79,10 +79,7 @@ class ArityError(ParseError):
                     self.actual_arity))
 
     def _pluralize(self, word, count):
-        if count == 1:
-            return word
-        else:
-            return word + 's'
+        return word if count == 1 else f'{word}s'
 
 
 @with_str_method

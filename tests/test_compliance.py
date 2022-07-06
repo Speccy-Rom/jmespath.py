@@ -59,7 +59,7 @@ def load_cases(full_path):
             elif 'bench' in case:
                 test_type = 'bench'
             else:
-                raise RuntimeError("Unknown test type: %s" % json.dumps(case))
+                raise RuntimeError(f"Unknown test type: {json.dumps(case)}")
             yield (given, test_type, case)
 
 

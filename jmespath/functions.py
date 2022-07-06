@@ -43,16 +43,16 @@ def signature(*arguments):
 
 
 class FunctionRegistry(type):
-    def __init__(cls, name, bases, attrs):
-        cls._populate_function_table()
-        super(FunctionRegistry, cls).__init__(name, bases, attrs)
+    def __init__(self, name, bases, attrs):
+        self._populate_function_table()
+        super(FunctionRegistry, self).__init__(name, bases, attrs)
 
-    def _populate_function_table(cls):
+    def _populate_function_table(self):
         function_table = {}
         # Any method with a @signature decorator that also
         # starts with "_func_" is registered as a function.
         # _func_max_by -> max_by function.
-        for name, method in get_methods(cls):
+        for name, method in get_methods(self):
             if not name.startswith('_func_'):
                 continue
             signature = getattr(method, 'signature', None)
@@ -61,7 +61,7 @@ class FunctionRegistry(type):
                     'function': method,
                     'signature': signature,
                 }
-        cls.FUNCTION_TABLE = function_table
+        self.FUNCTION_TABLE = function_table
 
 
 class Functions(metaclass=FunctionRegistry):
@@ -73,8 +73,7 @@ class Functions(metaclass=FunctionRegistry):
         try:
             spec = self.FUNCTION_TABLE[function_name]
         except KeyError:
-            raise exceptions.UnknownFunctionError(
-                "Unknown function: %s()" % function_name)
+            raise exceptions.UnknownFunctionError(f"Unknown function: {function_name}()")
         function = spec['function']
         signature = spec['signature']
         self._validate_arguments(resolved_args, signature, function_name)
@@ -92,8 +91,7 @@ class Functions(metaclass=FunctionRegistry):
 
     def _type_check(self, actual, signature, function_name):
         for i in range(len(signature)):
-            allowed_types = signature[i]['types']
-            if allowed_types:
+            if allowed_types := signature[i]['types']:
                 self._type_check_single(actual[i], allowed_types,
                                         function_name)
 
@@ -167,10 +165,7 @@ class Functions(metaclass=FunctionRegistry):
 
     @signature({'types': ['array-number']})
     def _func_avg(self, arg):
-        if arg:
-            return sum(arg) / float(len(arg))
-        else:
-            return None
+        return sum(arg) / float(len(arg)) if arg else None
 
     @signature({'types': [], 'variadic': True})
     def _func_not_null(self, *arguments):
@@ -180,10 +175,7 @@ class Functions(metaclass=FunctionRegistry):
 
     @signature({'types': []})
     def _func_to_array(self, arg):
-        if isinstance(arg, list):
-            return arg
-        else:
-            return [arg]
+        return arg if isinstance(arg, list) else [arg]
 
     @signature({'types': []})
     def _func_to_string(self, arg):
@@ -195,9 +187,7 @@ class Functions(metaclass=FunctionRegistry):
 
     @signature({'types': []})
     def _func_to_number(self, arg):
-        if isinstance(arg, (list, dict, bool)):
-            return None
-        elif arg is None:
+        if isinstance(arg, (list, dict, bool)) or arg is None:
             return None
         elif isinstance(arg, (int, float)):
             return arg
@@ -228,10 +218,7 @@ class Functions(metaclass=FunctionRegistry):
 
     @signature({'types': ['array', 'string']})
     def _func_reverse(self, arg):
-        if isinstance(arg, STRING_TYPE):
-            return arg[::-1]
-        else:
-            return list(reversed(arg))
+        return arg[::-1] if isinstance(arg, STRING_TYPE) else list(reversed(arg))
 
     @signature({"types": ['number']})
     def _func_ceil(self, arg):
@@ -247,31 +234,22 @@ class Functions(metaclass=FunctionRegistry):
 
     @signature({'types': ['expref']}, {'types': ['array']})
     def _func_map(self, expref, arg):
-        result = []
-        for element in arg:
-            result.append(expref.visit(expref.expression, element))
-        return result
+        return [expref.visit(expref.expression, element) for element in arg]
 
     @signature({"types": ['array-number', 'array-string']})
     def _func_max(self, arg):
-        if arg:
-            return max(arg)
-        else:
-            return None
+        return max(arg) if arg else None
 
     @signature({"types": ["object"], "variadic": True})
     def _func_merge(self, *arguments):
         merged = {}
         for arg in arguments:
-            merged.update(arg)
+            merged |= arg
         return merged
 
     @signature({"types": ['array-number', 'array-string']})
     def _func_min(self, arg):
-        if arg:
-            return min(arg)
-        else:
-            return None
+        return min(arg) if arg else None
 
     @signature({"types": ['array-string', 'array-number']})
     def _func_sort(self, arg):
@@ -331,20 +309,14 @@ class Functions(metaclass=FunctionRegistry):
         keyfunc = self._create_key_func(expref,
                                         ['number', 'string'],
                                         'min_by')
-        if array:
-            return min(array, key=keyfunc)
-        else:
-            return None
+        return min(array, key=keyfunc) if array else None
 
     @signature({'types': ['array']}, {'types': ['expref']})
     def _func_max_by(self, array, expref):
         keyfunc = self._create_key_func(expref,
                                         ['number', 'string'],
                                         'max_by')
-        if array:
-            return max(array, key=keyfunc)
-        else:
-            return None
+        return max(array, key=keyfunc) if array else None
 
     def _create_key_func(self, expref, allowed_types, function_name):
         def keyfunc(x):
